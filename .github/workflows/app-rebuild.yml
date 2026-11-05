@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/app-rebuild.json'
+      - '.github/scripts/app-rebuild.mjs'
 
 permissions:
   contents: write

@@ -10,6 +10,20 @@ import {
 
 const plan = JSON.parse(readFileSync(new URL('../app-rebuild.json', import.meta.url), 'utf8'));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const RATE_WAIT_MS = Number(process.env.RATE_WAIT_MS || 60000);
+
+// O servidor recusa com 429 depois de muitas publicacoes seguidas: espera e tenta de novo.
+async function waitingForRateLimit(action) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await action();
+    } catch (error) {
+      if (!/429|rate_limit/.test(error.message) || attempt >= 50) throw error;
+      log(`Limite do servidor, tentativa ${attempt}: esperando ${RATE_WAIT_MS / 1000}s`);
+      await sleep(RATE_WAIT_MS);
+    }
+  }
+}
 
 const tagOf = (entry) => `version-${entry.robloxVer}`;
 const sameEntry = (current, wanted) => current
@@ -56,12 +70,12 @@ async function rebuildApp() {
 
   for (const entry of current.slice(keep).reverse()) {
     log(`Removendo ${entry.clientName} ${entry.robloxVer}`);
-    await deleteFromApp(entry);
+    await waitingForRateLimit(() => deleteFromApp(entry));
   }
   for (const entry of plan.slice(keep)) {
     log(`Publicando ${entry.clientName} ${entry.robloxVer}`);
-    await publish(entry);
-    const stored = (await oldestFirst()).find((v) => v.robloxVer === entry.robloxVer);
+    await waitingForRateLimit(() => publish(entry));
+    const stored = (await waitingForRateLimit(oldestFirst)).find((v) => v.robloxVer === entry.robloxVer);
     if (!stored || !hasWorkingLink(stored)) throw new Error(`${entry.robloxVer} ficou sem link valido: ${stored && stored.downloadUrl}`);
     await sleep(1500);
   }
