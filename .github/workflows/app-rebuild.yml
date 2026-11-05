@@ -1,0 +1,29 @@
+name: App versions rebuild
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/app-rebuild.json'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: roblox-release
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: .github
+      - name: Pôr a aba Versions em ordem de lançamento
+        run: node .github/scripts/app-rebuild.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RC_ADMIN_KEY: ${{ secrets.RC_ADMIN_KEY }}
