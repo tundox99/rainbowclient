@@ -1,9 +1,10 @@
-// Publica sozinho cada versao nova do Roblox. Roda de 5 em 5 minutos no GitHub
-// Actions e so faz o que estiver faltando, entao pode falhar e rodar de novo.
+// Publica sozinho cada versao nova do Roblox que aparece no arquivo do theo. Roda
+// de 5 em 5 minutos no GitHub Actions e so faz o que estiver faltando, entao pode
+// falhar e rodar de novo.
 //
 //   node roblox-release.mjs                         fluxo normal
 //   DRY_RUN=1 node roblox-release.mjs               mostra o que faria, sem publicar
-//   ROBLOX_VERSION=version-... node roblox-release.mjs   usa essa versao em vez da atual
+//   ROBLOX_VERSION=version-... node roblox-release.mjs   usa essa versao em vez da mais recente
 //   node roblox-release.mjs --build <versao> <zip>  so monta o zip, para teste
 
 import { createHash } from 'node:crypto';
@@ -16,8 +17,8 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 const ADMIN_KEY = process.env.RC_ADMIN_KEY || '';
 const DRY_RUN = process.env.DRY_RUN === '1';
 
-const ROBLOX_LIVE = 'https://clientsettingscdn.roblox.com/v2/client-version/WindowsPlayer/channel/LIVE';
-const ROBLOX_CDN = 'https://setup.rbxcdn.com';
+// O mesmo CDN de onde o RDD do WEAO (rdd.weao.gg) baixa os pacotes no navegador.
+const ROBLOX_CDN = 'https://setup-aws.rbxcdn.com';
 const OFFSETS_SITE = 'https://offsets.imtheo.lol';
 const VERSIONS_API = 'https://dzddqd.discloud.dev/api/versions';
 const OFFSETS_ASSET = 'offsets.hpp';
@@ -70,14 +71,6 @@ async function fetchRetry(url, options = {}, tries = 3) {
 }
 
 // ---------------------------------------------------------------- Roblox
-
-async function liveVersion() {
-  const response = await fetchRetry(ROBLOX_LIVE);
-  if (!response.ok) throw new Error(`API do Roblox respondeu ${response.status}`);
-  const version = (await response.json()).clientVersionUpload;
-  if (!/^version-[0-9a-f]{16}$/.test(version || '')) throw new Error(`Versao estranha da API do Roblox: ${version}`);
-  return version;
-}
 
 async function packageList(version) {
   const response = await fetchRetry(`${ROBLOX_CDN}/${version}-rbxPkgManifest.txt`);
@@ -242,13 +235,27 @@ function offsetsProblem(text, version) {
   return '';
 }
 
+// A lista da pagina offsets.imtheo.lol/archive, da versao mais nova para a mais antiga.
+async function archiveVersions() {
+  const response = await fetchRetry(`${OFFSETS_SITE}/versions`, { headers: { 'User-Agent': 'rainbowclient-release' } });
+  if (!response.ok) throw new Error(`Arquivo de versoes respondeu ${response.status}`);
+  const versions = await response.json();
+  if (!Array.isArray(versions) || !versions.length) throw new Error('Arquivo de versoes veio vazio');
+  return versions
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+    .map((v) => v.version);
+}
+
+async function latestVersion() {
+  const [version] = await archiveVersions();
+  if (!/^version-[0-9a-f]{16}$/.test(version || '')) throw new Error(`Versao estranha no arquivo: ${version}`);
+  return version;
+}
+
 // A tag antiga version-11f155f3450f4 tem o nome da versao cortado.
 async function fullVersionName(tag) {
   if (/^version-[0-9a-f]{16}$/.test(tag)) return tag;
-  const response = await fetchRetry(`${OFFSETS_SITE}/versions`, { headers: { 'User-Agent': 'rainbowclient-release' } });
-  if (!response.ok) return null;
-  const match = (await response.json()).find((v) => v.version.startsWith(tag));
-  return match ? match.version : null;
+  return (await archiveVersions()).find((v) => v.startsWith(tag)) || null;
 }
 
 // ---------------------------------------------------------------- GitHub
@@ -390,7 +397,11 @@ async function publishInApp(version) {
     log('[teste] publicaria no app:', JSON.stringify({ ...body, key: '***' }));
     return true;
   }
-  if (!ADMIN_KEY) throw new Error('Falta o secret RC_ADMIN_KEY para publicar no app');
+  // Sem o secret o robo so cuida do GitHub. E a chave que liga a publicacao no app.
+  if (!ADMIN_KEY) {
+    console.log(`::warning::${version} nao foi publicada no app: falta o secret RC_ADMIN_KEY`);
+    return true;
+  }
 
   const publish = await fetchRetry(`${VERSIONS_API}/publish`, {
     method: 'POST',
@@ -411,18 +422,23 @@ async function main() {
     return;
   }
 
-  const version = process.env.ROBLOX_VERSION || await liveVersion();
-  log(`Versao atual do Roblox: ${version}`);
+  const version = process.env.ROBLOX_VERSION || await latestVersion();
+  log(`Versao mais recente no arquivo do theo: ${version}`);
 
   const releases = await listReleases();
   const published = releases.some((r) => !r.draft && version.startsWith(r.tag_name));
+  await attachMissingOffsets(releases);
   if (published) {
     log('A release dessa versao ja existe');
   } else {
-    await createRelease(version, await fetchOffsets(version), releases);
+    const offsets = await fetchOffsets(version);
+    if (!offsets) {
+      console.log(`::warning::Offsets de ${version} indisponiveis: tentando de novo na proxima rodada`);
+      return;
+    }
+    await createRelease(version, offsets, releases);
   }
 
-  await attachMissingOffsets(releases);
   if (!(await publishInApp(version))) log('Essa versao ja esta no app');
 }
 
