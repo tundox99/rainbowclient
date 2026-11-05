@@ -379,12 +379,38 @@ function nextClientName(versions) {
   return `Rainbow Client ${major}.${minor}.${patch}`;
 }
 
-async function publishInApp(version) {
+async function listAppVersions() {
   const response = await fetchRetry(`${VERSIONS_API}?order=newest`, { headers: { 'User-Agent': 'rainbowclient-release' } });
   if (!response.ok) throw new Error(`Lista de versoes respondeu ${response.status}`);
-  const versions = (await response.json()).versions || [];
+  return (await response.json()).versions || [];
+}
+
+// O installer do app so resolve links de release em github.com ou www.github.com.
+// O servidor troca https://github.com/ por raw.githubusercontent.com, que da 404.
+const hasWorkingLink = (entry) => /^https:\/\/(www\.)?github\.com\/.+\/releases\/tag\//i.test(entry.downloadUrl || '');
+
+async function deleteFromApp(entry) {
+  const response = await fetchRetry(`${VERSIONS_API}/delete`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', 'User-Agent': 'RainbowClient/1.0' },
+    body: JSON.stringify({ key: ADMIN_KEY, id: entry.id }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok !== true) throw new Error(`Remocao no app recusada: ${response.status} ${result.e || ''}`);
+}
+
+async function publishInApp(version) {
   const shortName = version.replace(/^version-/, '');
-  if (versions.some((v) => v.robloxVer && shortName.startsWith(v.robloxVer))) return false;
+  const inApp = (list) => list.find((v) => v.robloxVer && shortName.startsWith(v.robloxVer));
+
+  let versions = await listAppVersions();
+  const existing = inApp(versions);
+  if (existing && hasWorkingLink(existing)) return false;
+  if (existing && !DRY_RUN && ADMIN_KEY) {
+    log(`Removendo do app a entrada com link quebrado: ${existing.downloadUrl}`);
+    await deleteFromApp(existing);
+    versions = versions.filter((v) => v !== existing);
+  }
 
   const now = new Date();
   const day = String(now.getUTCDate()).padStart(2, '0');
@@ -400,7 +426,7 @@ async function publishInApp(version) {
     descFr: `Derniere version pour Roblox (${day}/${month}/${year})`,
     descDe: `Neueste Version fur Roblox (${day}.${month}.${year})`,
     cardImage: '',
-    downloadUrl: `https://github.com/${REPO}/releases/tag/${version}`,
+    downloadUrl: `https://www.github.com/${REPO}/releases/tag/${version}`,
     directory: '',
   };
   if (DRY_RUN) {
@@ -420,7 +446,14 @@ async function publishInApp(version) {
   });
   const result = await publish.json().catch(() => ({}));
   if (!publish.ok || result.ok !== true) throw new Error(`Publicacao no app recusada: ${publish.status} ${result.e || ''}`);
-  log(`Publicada no app como ${body.clientName}`);
+
+  const stored = inApp(await listAppVersions());
+  if (!stored) throw new Error('O app aceitou a publicacao, mas a versao nao apareceu na lista');
+  if (!hasWorkingLink(stored)) {
+    await deleteFromApp(stored);
+    throw new Error(`O servidor gravou um link que nao instala e a entrada foi removida: ${stored.downloadUrl}`);
+  }
+  log(`Publicada no app como ${body.clientName}: ${stored.downloadUrl}`);
   return true;
 }
 
