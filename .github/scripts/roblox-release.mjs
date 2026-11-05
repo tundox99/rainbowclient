@@ -11,16 +11,17 @@ import { createHash } from 'node:crypto';
 import { closeSync, openSync, readFileSync, statSync, writeSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const REPO = process.env.GITHUB_REPOSITORY || 'tundox99/rainbowclient';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
-const ADMIN_KEY = process.env.RC_ADMIN_KEY || '';
-const DRY_RUN = process.env.DRY_RUN === '1';
+export const ADMIN_KEY = process.env.RC_ADMIN_KEY || '';
+export const DRY_RUN = process.env.DRY_RUN === '1';
 
 // O mesmo CDN de onde o RDD do WEAO (rdd.weao.gg) baixa os pacotes no navegador.
 const ROBLOX_CDN = 'https://setup-aws.rbxcdn.com';
 const OFFSETS_SITE = 'https://offsets.imtheo.lol';
-const VERSIONS_API = 'https://dzddqd.discloud.dev/api/versions';
+export const VERSIONS_API = 'https://dzddqd.discloud.dev/api/versions';
 const OFFSETS_ASSET = 'offsets.hpp';
 const MIN_OFFSETS = 100;
 
@@ -55,7 +56,7 @@ const LAUNCHER_URL = 'https://github.com/vnnaworks/weblauncher/releases/download
 const LAUNCHER_SHA256 = '5d756c3d6ef2776b574a69c5096b065531be128b78f579017e08ca7c60e7d181';
 const APP_SETTINGS = '<?xml version="1.0" encoding="UTF-8"?>\n<Settings>\n    <ContentFolder>content</ContentFolder>\n    <BaseUrl>http://www.roblox.com</BaseUrl>\n</Settings>\n';
 
-const log = (...args) => console.log(...args);
+export const log = (...args) => console.log(...args);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function fetchRetry(url, options = {}, tries = 3) {
@@ -222,7 +223,7 @@ async function buildVersionZip(version, zipPath) {
 // ---------------------------------------------------------------- offsets
 
 // Devolve o offsets.hpp da versao, ou null se o theo ainda nao publicou.
-async function fetchOffsets(version) {
+export async function fetchOffsets(version) {
   const response = await fetchRetry(`${OFFSETS_SITE}/${version}/offsets.hpp`, { headers: { 'User-Agent': 'rainbowclient-release' } });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Site de offsets respondeu ${response.status}`);
@@ -286,7 +287,7 @@ async function github(path, options = {}) {
   return response.status === 204 ? null : response.json();
 }
 
-async function listReleases() {
+export async function listReleases() {
   const releases = [];
   for (let page = 1; ; page++) {
     const batch = await github(`/releases?per_page=100&page=${page}`);
@@ -312,7 +313,7 @@ async function uploadAsset(release, name, body, contentType) {
 }
 
 // Cria como rascunho e so publica depois de subir tudo: ninguem ve release pela metade.
-async function createRelease(version, offsets, releases) {
+export async function createRelease(version, offsets, releases, { latest = true } = {}) {
   log(`Criando a release de ${version}`);
   const zipPath = join(process.env.RUNNER_TEMP || tmpdir(), `${version}.zip`);
   await buildVersionZip(version, zipPath);
@@ -329,8 +330,8 @@ async function createRelease(version, offsets, releases) {
   });
   await uploadAsset(draft, `${version}.zip`, readFileSync(zipPath), 'application/zip');
   if (offsets) await uploadAsset(draft, OFFSETS_ASSET, Buffer.from(offsets), 'text/plain');
-  await github(`/releases/${draft.id}`, { method: 'PATCH', body: JSON.stringify({ draft: false, make_latest: 'true' }) });
-  await markRepositoryActive(version);
+  await github(`/releases/${draft.id}`, { method: 'PATCH', body: JSON.stringify({ draft: false, make_latest: latest ? 'true' : 'false' }) });
+  if (latest) await markRepositoryActive(version);
   log('  release publicada');
 }
 
@@ -379,7 +380,7 @@ function nextClientName(versions) {
   return `Rainbow Client ${major}.${minor}.${patch}`;
 }
 
-async function listAppVersions() {
+export async function listAppVersions() {
   const response = await fetchRetry(`${VERSIONS_API}?order=newest`, { headers: { 'User-Agent': 'rainbowclient-release' } });
   if (!response.ok) throw new Error(`Lista de versoes respondeu ${response.status}`);
   return (await response.json()).versions || [];
@@ -388,9 +389,9 @@ async function listAppVersions() {
 // O installer do app so resolve links de release em github.com ou www.github.com.
 // O servidor troca github.com e www.github.com por raw.githubusercontent.com, que
 // da 404. O installer ignora maiusculas no host, entao vai GitHub.com.
-const hasWorkingLink = (entry) => /^https:\/\/(www\.)?github\.com\/.+\/releases\/tag\//i.test(entry.downloadUrl || '');
+export const hasWorkingLink = (entry) => /^https:\/\/(www\.)?github\.com\/.+\/releases\/tag\//i.test(entry.downloadUrl || '');
 
-async function deleteFromApp(entry) {
+export async function deleteFromApp(entry) {
   const response = await fetchRetry(`${VERSIONS_API}/delete`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', 'User-Agent': 'RainbowClient/1.0' },
@@ -486,7 +487,9 @@ async function main() {
   if (!(await publishInApp(version))) log('Essa versao ja esta no app');
 }
 
-main().catch((error) => {
-  console.error(`::error::${error.message}`);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(`::error::${error.message}`);
+    process.exit(1);
+  });
+}

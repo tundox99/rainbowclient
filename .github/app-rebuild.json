@@ -1,0 +1,74 @@
+[
+  {
+    "clientName": "Rainbow Client 1.0.2",
+    "robloxVer": "11f155f3450f4",
+    "descEn": "The latest version for Roblox (10/15/2026)",
+    "descPt": "A versao mais recente pro Roblox (15/10/2026)",
+    "descEs": "La ultima version para Roblox (15/10/2026)",
+    "descFr": "La derniere version pour Roblox (15/10/2026)",
+    "descDe": "Die neueste Version fuer Roblox (15/10/2026)",
+    "cardImage": "",
+    "downloadUrl": "https://GitHub.com/tundox99/rainbowclient/releases/tag/version-11f155f3450f4",
+    "directory": ""
+  },
+  {
+    "clientName": "Rainbow Client 1.0.3",
+    "robloxVer": "117ad38284844374",
+    "descEn": "Latest Version for Roblox (10/19/2026)",
+    "descPt": "Ultima versao para Roblox (19/10/2026)",
+    "descEs": "Ultima version para Roblox (19/10/2026)",
+    "descFr": "Derniere version pour Roblox (19/10/2026)",
+    "descDe": "Neueste Version fur Roblox (19.10.2026)",
+    "cardImage": "",
+    "downloadUrl": "https://GitHub.com/tundox99/rainbowclient/releases/tag/version-117ad38284844374",
+    "directory": ""
+  },
+  {
+    "clientName": "Rainbow Client 1.0.4",
+    "robloxVer": "9ac8595712b447a7",
+    "descEn": "Latest Version for Roblox (10/20/2026)",
+    "descPt": "Ultima versao para Roblox (20/10/2026)",
+    "descEs": "Ultima version para Roblox (20/10/2026)",
+    "descFr": "Derniere version pour Roblox (20/10/2026)",
+    "descDe": "Neueste Version fur Roblox (20.10.2026)",
+    "cardImage": "",
+    "downloadUrl": "https://GitHub.com/tundox99/rainbowclient/releases/tag/version-9ac8595712b447a7",
+    "directory": ""
+  },
+  {
+    "clientName": "Rainbow Client 1.0.5",
+    "robloxVer": "5a21b87bbc2641cf",
+    "descEn": "Latest Version for Roblox (10/26/2026)",
+    "descPt": "Ultima versao para Roblox (26/10/2026)",
+    "descEs": "Ultima version para Roblox (26/10/2026)",
+    "descFr": "Derniere version pour Roblox (26/10/2026)",
+    "descDe": "Neueste Version fur Roblox (26.10.2026)",
+    "cardImage": "",
+    "downloadUrl": "https://GitHub.com/tundox99/rainbowclient/releases/tag/version-5a21b87bbc2641cf",
+    "directory": ""
+  },
+  {
+    "clientName": "Rainbow Client 1.0.6",
+    "robloxVer": "4dcf516fd7214b1c",
+    "descEn": "Latest Version for Roblox (03/11/2026)",
+    "descPt": "Ultima versao para Roblox (03/11/2026)",
+    "descEs": "Ultima version para Roblox (03/11/2026)",
+    "descFr": "Derniere version pour Roblox (03/11/2026)",
+    "descDe": "Neueste Version fur Roblox (03.11.2026)",
+    "cardImage": "",
+    "downloadUrl": "https://GitHub.com/tundox99/rainbowclient/releases/tag/version-4dcf516fd7214b1c",
+    "directory": ""
+  },
+  {
+    "clientName": "Rainbow Client 1.0.7",
+    "robloxVer": "f0ea5da9412f4e35",
+    "descEn": "Latest Version for Roblox (11/05/2026)",
+    "descPt": "Ultima versao para Roblox (05/11/2026)",
+    "descEs": "Ultima version para Roblox (05/11/2026)",
+    "descFr": "Derniere version pour Roblox (05/11/2026)",
+    "descDe": "Neueste Version fur Roblox (05.11.2026)",
+    "cardImage": "",
+    "downloadUrl": "https://GitHub.com/tundox99/rainbowclient/releases/tag/version-f0ea5da9412f4e35",
+    "directory": ""
+  }
+]
