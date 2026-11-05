@@ -50,6 +50,9 @@ const PACKAGE_FOLDERS = {
   'extracontent-places.zip': 'ExtraContent/places/',
 };
 const IGNORED_PACKAGES = new Set(['RobloxPlayerInstaller.exe', 'RobloxPlayerLauncher.exe']);
+// O mesmo arquivo que o WEAO coloca no zip com includeLauncher=true.
+const LAUNCHER_URL = 'https://github.com/vnnaworks/weblauncher/releases/download/2.1.5/weblauncher.exe';
+const LAUNCHER_SHA256 = '5d756c3d6ef2776b574a69c5096b065531be128b78f579017e08ca7c60e7d181';
 const APP_SETTINGS = '<?xml version="1.0" encoding="UTF-8"?>\n<Settings>\n    <ContentFolder>content</ContentFolder>\n    <BaseUrl>http://www.roblox.com</BaseUrl>\n</Settings>\n';
 
 const log = (...args) => console.log(...args);
@@ -151,11 +154,18 @@ async function buildVersionZip(version, zipPath) {
   }
   if (!files.has('RobloxPlayerBeta.exe')) throw new Error('RobloxPlayerBeta.exe nao veio nos pacotes');
 
-  const settings = Buffer.from(APP_SETTINGS);
-  files.set('AppSettings.xml', {
-    method: 0, time: 0, date: 0x21, crc: crc32(settings),
-    compressedSize: settings.length, size: settings.length, data: settings,
-  });
+  const launcherResponse = await fetchRetry(LAUNCHER_URL);
+  if (!launcherResponse.ok) throw new Error(`weblauncher.exe respondeu ${launcherResponse.status}`);
+  const launcher = Buffer.from(await launcherResponse.arrayBuffer());
+  const launcherHash = createHash('sha256').update(launcher).digest('hex');
+  if (launcherHash !== LAUNCHER_SHA256) throw new Error(`weblauncher.exe mudou: sha256 ${launcherHash}`);
+
+  for (const [name, data] of [['AppSettings.xml', Buffer.from(APP_SETTINGS)], ['weblauncher.exe', launcher]]) {
+    files.set(name, {
+      method: 0, time: 0, date: 0x21, crc: crc32(data),
+      compressedSize: data.length, size: data.length, data,
+    });
+  }
 
   const fd = openSync(zipPath, 'w');
   try {
