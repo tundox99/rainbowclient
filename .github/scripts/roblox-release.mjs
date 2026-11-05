@@ -386,7 +386,8 @@ async function listAppVersions() {
 }
 
 // O installer do app so resolve links de release em github.com ou www.github.com.
-// O servidor troca https://github.com/ por raw.githubusercontent.com, que da 404.
+// O servidor troca github.com e www.github.com por raw.githubusercontent.com, que
+// da 404. O installer ignora maiusculas no host, entao vai GitHub.com.
 const hasWorkingLink = (entry) => /^https:\/\/(www\.)?github\.com\/.+\/releases\/tag\//i.test(entry.downloadUrl || '');
 
 async function deleteFromApp(entry) {
@@ -426,7 +427,7 @@ async function publishInApp(version) {
     descFr: `Derniere version pour Roblox (${day}/${month}/${year})`,
     descDe: `Neueste Version fur Roblox (${day}.${month}.${year})`,
     cardImage: '',
-    downloadUrl: `https://www.github.com/${REPO}/releases/tag/${version}`,
+    downloadUrl: `https://GitHub.com/${REPO}/releases/tag/${version}`,
     directory: '',
   };
   if (DRY_RUN) {
